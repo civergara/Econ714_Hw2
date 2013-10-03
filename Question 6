@@ -131,10 +131,10 @@ xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 title('Value Function')
 
 subplot(2,1,2)
-plot(vGridCapital,mValueFunction*(1-bbeta))
+plot(vGridCapital,mValueFunction*(1-bbeta)/bbeta)
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 title('Scaled Value Function')
 
-valueFunctionIteration_q6( nGridCapital , nGridLabor ,mValueFunction*(1-bbeta),1.4*10^-7);
+valueFunctionIteration_q6( nGridCapital , nGridLabor ,mValueFunction*(1-bbeta)/bbeta,1.4*10^-7);
 
 toc
