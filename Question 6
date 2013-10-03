@@ -1,0 +1,140 @@
+%% Homework 2 Econ 714
+%
+% Endogenous Grid
+% Constanza Vergara
+
+%% 0. Housekeeping
+
+clear all
+close all
+clc
+
+tic
+
+%%  1. Calibration
+
+aalpha = 1/3;           % Elasticity of output w.r.t. capital
+bbeta  = 0.95;          % Discount factor
+ddelta = .09;          % Depreciation
+laborSteadyState=1/3;   % Labor in steady state
+
+%Grid Points
+nGridCapital = 17280;
+nGridLabor= 1700;
+
+% Productivity values
+vProductivity = [0.9792; 0.9896; 1.0000; 1.0106; 1.0212]';
+
+% Transition matrix
+mTransition   = [0.9727, 0.0273, 0.0000, 0.0000, 0.0000;
+                 0.0041, 0.9806, 0.0153, 0.0000, 0.0000;
+                 0.0000, 0.0082, 0.9837, 0.0082, 0.0000;
+                 0.0000, 0.0000, 0.0153, 0.9806, 0.0041;
+                 0.0000, 0.0000, 0.0000, 0.0273, 0.9727];
+             
+%% 2. Steady State
+
+capitalSteadyState = ((1/bbeta-1+ddelta)/(aalpha*laborSteadyState^(1-aalpha)))^(1/(aalpha-1));
+outputSteadyState = capitalSteadyState^aalpha*laborSteadyState^(1-aalpha);
+consumptionSteadyState = outputSteadyState-capitalSteadyState*ddelta;
+
+psi=outputSteadyState*(1-aalpha)/((outputSteadyState-ddelta*capitalSteadyState)*laborSteadyState^2);
+
+fprintf(' Output = %2.6f, Capital = %2.6f, Consumption = %2.6f\n', outputSteadyState, capitalSteadyState, consumptionSteadyState); 
+fprintf('\n')
+fprintf(' Value of Leisure=%2.6f\n',psi)
+fprintf('\n')
+
+% We generate the grid of capital
+vGridCapital = linspace(0.5*capitalSteadyState,1.5*capitalSteadyState,nGridCapital);
+vGridLabor=linspace(0.5*laborSteadyState,1.5*laborSteadyState,nGridLabor);
+
+nGridProductivity = length(vProductivity);
+stepSize=vGridCapital(2)-vGridCapital(1);
+
+%% 2. Required matrices and vectors 
+
+mOutput           = zeros(nGridCapital,nGridProductivity);
+mValueFunction    = zeros(nGridCapital,nGridProductivity);
+mValueFunctionNew = zeros(nGridCapital,nGridProductivity);
+dValueFunction    = zeros(nGridCapital,nGridProductivity);
+
+expectedValueFunction = zeros(nGridCapital,nGridProductivity);
+
+grids=linspace(.5*consumptionSteadyState,1.5*consumptionSteadyState,nGridCapital);
+
+for nCapital=1:nGridCapital
+    for nProductivity=1:nGridProductivity
+        mValueFunction(nCapital,nProductivity)=bbeta*(log(grids(nCapital))-psi*laborSteadyState^2);
+    end
+end
+
+
+%% 6. We pre-build output for each point in the grid 
+
+for nCapital=1:nGridCapital
+        for nProductivity=1:nGridProductivity
+            mOutput(nCapital,nProductivity) = (vGridCapital(nCapital))^aalpha*...
+                vProductivity(nProductivity)*laborSteadyState^(1-aalpha)+(1-ddelta)*vGridCapital(nCapital);
+        end
+end
+
+%% Main Iteration
+
+maxDifference = 10.0;
+tolerance = 0.0000001;
+iteration = 0;
+
+while (maxDifference>tolerance)  
+%while (iteration<200)
+    
+for nProductivity=1:nGridProductivity
+    dValueFunction(:,nProductivity)=gradient(mValueFunction(:,nProductivity),stepSize);
+end
+
+consumption=dValueFunction.^-1;
+
+for nProductivity=1:nGridProductivity
+    for nCapital=1:nGridCapital 
+        marketResources(nCapital,nProductivity)=consumption(nCapital,nProductivity)+vGridCapital(nCapital);
+    end
+end
+
+mValueFunctionNew=(log(consumption)-psi*laborSteadyState^2/2)+mValueFunction;
+
+for nProductivity=1:nGridProductivity
+    mValueFunctionNew1(:,nProductivity)=interp1(real(marketResources(:,nProductivity)),...
+        mValueFunctionNew(:,nProductivity),mOutput(:,nProductivity),'spline');
+end
+
+expectedValueFunction = bbeta*mValueFunctionNew1*mTransition';
+
+maxDifference=max(max(abs(expectedValueFunction-mValueFunction)));
+
+mValueFunction = expectedValueFunction;
+    
+    iteration = iteration+1;
+    if (mod(iteration,10)==0 || iteration ==1)
+        fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference); 
+    end
+           
+end
+
+fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference); 
+fprintf('\n')
+
+figure(1)
+
+subplot(2,1,1)
+plot(vGridCapital,mValueFunction)
+xlim([vGridCapital(1) vGridCapital(nGridCapital)])
+title('Value Function')
+
+subplot(2,1,2)
+plot(vGridCapital,mValueFunction*(1-bbeta))
+xlim([vGridCapital(1) vGridCapital(nGridCapital)])
+title('Scaled Value Function')
+
+valueFunctionIteration_q6( nGridCapital , nGridLabor ,mValueFunction*(1-bbeta),1.4*10^-7);
+
+toc
