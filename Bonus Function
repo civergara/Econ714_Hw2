@@ -1,0 +1,115 @@
+function [value]=bonus1(utilityFunction,productionFunction,nGridCapital,nGridLabor,vProductivity,...
+    mTransition,capitalSteadyState,laborSteadyState,depreciationRate,discountRate)
+
+% We generate the grid of capital
+vGridCapital = linspace(0.5*capitalSteadyState,1.5*capitalSteadyState,nGridCapital);
+vGridLabor=linspace(0.5*laborSteadyState,1.5*laborSteadyState,nGridLabor);
+
+nGridProductivity = length(vProductivity);
+
+%% 2. Required matrices and vectors for First Iteration
+
+mOutput           = zeros(nGridCapital,nGridLabor,nGridProductivity);
+mValueFunction    = zeros(nGridCapital,nGridProductivity);
+mValueFunctionNew = zeros(nGridCapital,nGridProductivity);
+mPolicyFunction   = zeros(nGridCapital,nGridProductivity);
+mLaborFunction    = zeros(nGridCapital,nGridProductivity);
+ 
+expectedValueFunction = zeros(nGridCapital,nGridProductivity);
+
+%% 6. We pre-build output for each point in the grid for Main Iteration
+
+for nCapital=1:nGridCapital
+    for nLabor=1:nGridLabor
+        for nProductivity=1:nGridProductivity
+            mOutput(nCapital,nLabor,nProductivity) = productionFunction(vGridCapital(nCapital),...
+                vGridLabor(nLabor),vProductivity(nProductivity));
+        end
+    end
+end
+
+%% 7. Main iteration
+
+maxDifference = 10.0;
+tolerance = 0.0000001;
+iteration = 0;
+
+while (maxDifference>tolerance)  
+    
+    expectedValueFunction = mValueFunction*mTransition';
+    
+    for nProductivity = 1:nGridProductivity
+        
+        % We start from previous choice (monotonicity of policy function)
+        gridCapitalNextPeriod = 1;
+        
+        for nCapital = 1:nGridCapital
+                        
+            valueHighSoFar = -1000.0;
+            capitalChoice  = vGridCapital(1);
+            laborChoice = vGridLabor(1);
+            gridLabor=1;
+                       
+            for nCapitalNextPeriod = gridCapitalNextPeriod:nGridCapital
+                
+                valueHighSoFar1=-1000.0;
+                
+                for nLabor = 1:nGridLabor
+                    
+                consumption = mOutput(nCapital,nLabor,nProductivity)-vGridCapital(nCapitalNextPeriod)+...
+                    vGridCapital(nCapital)*(1-depreciationRate);
+                valueProvisional =(1-discountRate)*utilityFunction(consumption,vGridLabor(nLabor))+...
+                discountRate*expectedValueFunction(nCapitalNextPeriod,nProductivity);              
+                
+                if (valueProvisional>valueHighSoFar1)
+                    valueHighSoFar1=valueProvisional;
+                    gridLabor=nLabor;
+                    laborChoice=vGridLabor(nLabor);
+                else
+                    break;
+                end
+                
+                end
+                      
+                if (valueProvisional>valueHighSoFar)
+                    valueHighSoFar = valueProvisional;
+                    capitalChoice = vGridCapital(nCapitalNextPeriod);
+                    gridCapitalNextPeriod = nCapitalNextPeriod;
+                else
+                    break; % We break when we have achieved the max
+                end    
+                  
+            end
+            
+            mValueFunctionNew(nCapital,nProductivity) = valueHighSoFar;
+            mPolicyFunction(nCapital,nProductivity) = capitalChoice;
+            mLaborFunction(nCapital,nProductivity)=laborChoice;
+        end
+        
+    end
+    
+    maxDifference = max(max(abs(mValueFunctionNew-mValueFunction)));
+    mValueFunction = mValueFunctionNew;
+    
+    iteration = iteration+1;
+    if (mod(iteration,10)==0 || iteration ==1)
+        fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference); 
+    end
+           
+end
+
+fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference); 
+fprintf('\n')
+
+fprintf(' My chek = %2.6f\n', mPolicyFunction(10,3)); 
+fprintf('\n')
+
+%% 6. Plotting results
+
+plot(vGridCapital,mValueFunction)
+xlim([vGridCapital(1) vGridCapital(nGridCapital)])
+title('Value Function')
+
+value=mValueFunction;
+
+end
