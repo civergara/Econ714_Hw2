@@ -1,0 +1,52 @@
+%% Homework 2 Econ 714
+%
+% Multigrid
+% Constanza Vergara
+
+%% 0. Housekeeping
+
+clear all
+close all
+clc
+
+tic
+
+%% Steady State
+
+aalpha = 1/3;           % Elasticity of output w.r.t. capital
+bbeta  = 0.95;          % Discount factor
+ddelta = .09;          % Depreciation
+laborSteadyState=1/3;   % Labor in steady state
+             
+capitalSteadyState = ((1/bbeta-1+ddelta)/(aalpha*laborSteadyState^(1-aalpha)))^(1/(aalpha-1));
+outputSteadyState = capitalSteadyState^aalpha*laborSteadyState^(1-aalpha);
+consumptionSteadyState = outputSteadyState-capitalSteadyState*ddelta;
+psi=outputSteadyState*(1-aalpha)/((outputSteadyState-ddelta*capitalSteadyState)*laborSteadyState^2);
+
+%% Multigrid
+
+nGridLabor=1700;
+
+mValueFunction    = ones(100,5)*(log(consumptionSteadyState)-psi*laborSteadyState^2/2);
+
+mValueFunction1=valueFunctionIteration_q4(100,nGridLabor,mValueFunction,0.0000001);
+
+clear mValueFunction;
+
+for nProductivity=1:5
+    mValueFunction(:,nProductivity)=interp1(linspace(0.5*capitalSteadyState,1.5*capitalSteadyState,100),...
+        mValueFunction1(:,nProductivity),linspace(0.5*capitalSteadyState,1.5*capitalSteadyState,1000),'spline');
+end
+
+mValueFunction2=valueFunctionIteration_q4(1000,nGridLabor,mValueFunction,0.0000001);
+
+clear mValueFunction;
+
+for nProductivity=1:5
+    mValueFunction(:,nProductivity)=interp1(linspace(0.5*capitalSteadyState,1.5*capitalSteadyState,1000),...
+        mValueFunction2(:,nProductivity),linspace(0.5*capitalSteadyState,1.5*capitalSteadyState,25000),'spline');
+end
+
+mValueFunction3=valueFunctionIteration_q4(25000,nGridLabor,mValueFunction,2.4*10^-7);
+
+toc
