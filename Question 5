@@ -1,0 +1,48 @@
+%% Homework 2 Econ 714
+%
+% Stochastic Grid
+% Constanza Vergara
+
+%% 0. Housekeeping
+
+clear all
+close all
+clc
+
+tic
+
+%% 1. Steady State
+
+aalpha = 1/3;           % Elasticity of output w.r.t. capital
+bbeta  = 0.95;          % Discount factor
+ddelta = .09;          % Depreciation
+laborSteadyState=1/3;   % Labor in steady state
+             
+capitalSteadyState = ((1/bbeta-1+ddelta)/(aalpha*laborSteadyState^(1-aalpha)))^(1/(aalpha-1));
+outputSteadyState = capitalSteadyState^aalpha*laborSteadyState^(1-aalpha);
+consumptionSteadyState = outputSteadyState-capitalSteadyState*ddelta;
+psi=outputSteadyState*(1-aalpha)/((outputSteadyState-ddelta*capitalSteadyState)*laborSteadyState^2);
+
+%% 2. Stochastic Grid
+
+sigma=2;
+nGridCapital=17820;
+
+nCapital=1;
+vGridCapital=zeros(nGridCapital,1);
+
+while nCapital<=nGridCapital
+    a=normrnd(capitalSteadyState,sigma);
+    if a <=1.5*capitalSteadyState
+        if a>=.5*capitalSteadyState
+            vGridCapital(nCapital)=a;
+            nCapital=nCapital+1;
+        end
+    end
+end
+clear nCapital
+clear a
+
+vGridCapital=sort(vGridCapital);
+
+valueFunctionIteration_deterministic(vGridCapital,1700,1.1*10^-8);
